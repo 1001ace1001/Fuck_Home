@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="cn.fuckhome.xiaowine">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
             android:icon="@mipmap/ic_launcher"
             android:label="@string/AppName"
+            android:description="@string/XposedDesc"
             android:roundIcon="@mipmap/ic_launcher">
 
         <activity
@@ -32,21 +32,6 @@
             </intent-filter>
         </activity-alias>
 
-        <meta-data
-                android:name="xposedsharedprefs"
-                android:value="true"/>
-        <meta-data
-                android:name="xposedmodule"
-                android:value="true"/>
-        <meta-data
-                android:name="xposedminversion"
-                android:value="93"/>
-        <meta-data
-                android:name="xposedscope"
-                android:resource="@array/xposedscope"/>
-        <meta-data
-                android:name="xposeddescription"
-                android:value="@string/XposedDesc"/>
     </application>
 
 </manifest>

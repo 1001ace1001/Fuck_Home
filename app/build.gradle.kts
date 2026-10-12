@@ -8,7 +8,8 @@ plugins {
 }
 
 android {
-    compileSdk = 34
+    compileSdk = 37
+    compileSdkMinor = 0
     namespace = "cn.fuckhome.xiaowine"
     val buildTime = System.currentTimeMillis()
     defaultConfig {
@@ -26,7 +27,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            setProguardFiles(listOf(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro", "proguard-log.pro"))
+            setProguardFiles(listOf(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"))
         }
     }
     compileOptions {
@@ -38,7 +39,7 @@ android {
     }
     packagingOptions {
         resources {
-            excludes += "/META-INF/**"
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/kotlin/**"
             excludes += "/*.txt"
             excludes += "/*.bin"
@@ -60,8 +61,8 @@ android {
 
 
 dependencies {
-    implementation("com.github.kyuubiran:EzXHelper:1.0.3")
-    compileOnly("de.robv.android.xposed:api:82")
+    implementation("io.github.libxposed:service:102.0.0")
+    compileOnly("io.github.libxposed:api:102.0.0")
     implementation(project(":blockmiui"))
     implementation(project(":xtoast"))
 }
