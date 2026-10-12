@@ -48,7 +48,7 @@ fun Iterable<Executable>.hookAfter(h: Hooker) = map { it.hookAfter(h) }
 fun String.findClass(loader: ClassLoader = ModernXposed.classLoader): Class<*> = Class.forName(this,false,loader)
 private fun Class<*>.hierarchy(): Sequence<Class<*>> = generateSequence(this) { it.superclass }
 fun findMethod(name: String, p: Method.()->Boolean): Method = name.findClass().hierarchy().flatMap { it.declaredMethods.asSequence() }.first { it.p() }.apply { setAccessible(true) }
-fun findAllMethods(name: String, p: Method.()->Boolean): List<Method> = name.findClass().declaredMethods.filter { it.p() }.onEach { setAccessible(true) }
+fun findAllMethods(name: String, p: Method.()->Boolean): List<Method> = name.findClass().declaredMethods.filter { it.p() }.onEach { it.setAccessible(true) }
 fun findConstructor(name: String, p: Constructor<*>.()->Boolean): Constructor<*> = name.findClass().declaredConstructors.first { it.p() }.apply { setAccessible(true) }
 private fun types(args: Array<out Any?>): Array<Class<*>> = args.map { if(it is Class<*>) it else (it as String).findClass() }.toTypedArray()
 private fun Class<*>.exact(name: String?, args: Array<out Any?>): Method = hierarchy().mapNotNull { runCatching { it.getDeclaredMethod(requireNotNull(name),*types(args)) }.getOrNull() }.first().apply { setAccessible(true) }
