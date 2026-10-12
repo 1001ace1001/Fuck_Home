@@ -2,104 +2,74 @@ package cn.fuckhome.xiaowine.hook
 
 import android.app.Application
 import android.content.Context
-import cn.fuckhome.xiaowine.R
+import android.content.res.AssetManager
+import android.content.res.Resources
+import android.util.Log
 import cn.fuckhome.xiaowine.hook.module.add.Info
 import cn.fuckhome.xiaowine.hook.module.modify.*
-import cn.fuckhome.xiaowine.utils.LogUtils
+import cn.fuckhome.xiaowine.utils.ModernXposed
+import cn.fuckhome.xiaowine.utils.Utils
 import cn.fuckhome.xiaowine.utils.Utils.XConfig
 import cn.fuckhome.xiaowine.utils.hookBeforeMethod
-import com.github.kyuubiran.ezxhelper.init.EzXHelperInit
-import com.github.kyuubiran.ezxhelper.init.EzXHelperInit.initHandleLoadPackage
-import com.github.kyuubiran.ezxhelper.init.EzXHelperInit.setEzClassLoader
-import com.github.kyuubiran.ezxhelper.init.InitFields
-import com.github.kyuubiran.ezxhelper.utils.Log.logexIfThrow
-import de.robv.android.xposed.IXposedHookLoadPackage
-import de.robv.android.xposed.IXposedHookZygoteInit
-import de.robv.android.xposed.callbacks.XC_LoadPackage
+import io.github.libxposed.api.XposedModule
+import io.github.libxposed.api.XposedModuleInterface.*
 
-private const val PACKAGE_MIUI_HOME = "com.miui.home"
-private const val PACKAGE_POCO_HOME = "com.mi.android.globallauncher"
-val homeList = arrayOf(PACKAGE_POCO_HOME, PACKAGE_MIUI_HOME)
+val homeList = arrayOf("com.miui.home", "com.mi.android.globallauncher")
 
-private const val PACKAGE_SystemUi = "com.android.systemui"
-private const val PACKAGE_Android = "android"
-
-class MainHook : IXposedHookLoadPackage, IXposedHookZygoteInit {
-    private var isInit: Boolean = true
-    var context: Context? = null
-
-    override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
-        if (!XConfig.getBoolean("MainSwitch")) {
-            LogUtils.i("总开关未打开")
-            return
-        }
-        initHandleLoadPackage(lpparam)
-        setEzClassLoader(lpparam.classLoader)
-        when (lpparam.packageName) {
+class MainHook : XposedModule() {
+    private var initialized = false
+    override fun onModuleLoaded(param: ModuleLoadedParam) {
+        ModernXposed.module = this
+        runCatching { Utils.installRemotePreferences(getRemotePreferences(Utils.CONFIG_GROUP)) }
+            .onFailure { log(Log.ERROR, "Fuck_Home", "Remote preferences unavailable", it) }
+    }
+    override fun onPackageReady(param: PackageReadyParam) {
+        if (!param.isFirstPackage || !XConfig.getBoolean("MainSwitch")) return
+        ModernXposed.classLoader = param.classLoader
+        when (param.packageName) {
             in homeList -> Application::class.java.hookBeforeMethod("attach", Context::class.java) {
-                EzXHelperInit.apply {
-                    initAppContext(it.args[0] as Context)
-                    runCatching {
-                        if (isInit) {
-                            if (XConfig.getBoolean("Pad")) {
-                                UnlockPad.init()
-                            }
-                            if (XConfig.getBoolean("Shortcuts")) {
-                                ShortcutItemCount.init()
-                            }
-                            if (XConfig.getBoolean("UnlockGrids")) {
-                                UnlockGrids.init()
-                            }
-                            if (XConfig.getBoolean("HideAppName")) {
-                                HideAppName.init()
-                            }
-                            if (XConfig.getBoolean("HideAppIcon")) {
-                                HideAppIcon.init()
-                            }
-                            if (XConfig.getBoolean("UnlockHotseat")) {
-                                UnlockHotseatIcon.init()
-                            }
-                            if (XConfig.getBoolean("ShortcutSmallWindow")) {
-                                ShortcutSmallWindow.init()
-                            }
-                            if (XConfig.getBoolean("HideSmallWindow")) {
-                                HideSmallWindow.init()
-                            }
-                            if (XConfig.getBoolean("RemoveSmallWindowRestriction")) {
-                                RemoveSmallWindowRestriction2.init()
-                            }
-                            if (XConfig.getBoolean("UnlockNavType")) {
-                                UnlockNavType.init()
-                            }
-                            Info.init()
-                            HideStatusBarWhenEnterResents.init()
-                            isInit = false
-                            LogUtils.i(InitFields.moduleRes.getString(R.string.HookSuccess))
-                        }
-                    }.logexIfThrow(InitFields.moduleRes.getString(R.string.HookFailed))
-                }
+                if (initialized) return@hookBeforeMethod
+                initialized = true
+                val context = it.args[0] as Context
+                ModernXposed.appContext = context
+                runCatching {
+                    val assets = AssetManager::class.java.getDeclaredConstructor().newInstance()
+                    val cookie = AssetManager::class.java.getDeclaredMethod("addAssetPath", String::class.java)
+                        .invoke(assets, moduleApplicationInfo.sourceDir) as Int
+                    check(cookie != 0) { "Cannot load module resources" }
+                    @Suppress("DEPRECATION")
+                    val resources = Resources(assets, context.resources.displayMetrics, context.resources.configuration)
+                    ModernXposed.moduleRes = resources
+                    installHomeHooks()
+                }.onFailure { error -> log(Log.ERROR, "Fuck_Home", "Launcher initialization failed", error) }
             }
-
-            PACKAGE_SystemUi -> {
-                if (XConfig.getBoolean("RemoveSmallWindowRestriction")) {
-                    RemoveSmallWindowRestriction3.init()
-                }
+            "com.android.systemui" -> if (XConfig.getBoolean("RemoveSmallWindowRestriction")) {
+                runCatching { RemoveSmallWindowRestriction3.init() }
+                    .onFailure { log(Log.ERROR, "Fuck_Home", "System UI hook failed", it) }
             }
-
-            PACKAGE_Android -> {
-                if (XConfig.getBoolean("RemoveSmallWindowRestriction")) {
-                    RemoveSmallWindowRestriction1.init()
-                }
-            }
-
-            else -> return
         }
-
     }
-
-
-    override fun initZygote(startupParam: IXposedHookZygoteInit.StartupParam) {
-        EzXHelperInit.initZygote(startupParam)
+    override fun onSystemServerStarting(param: SystemServerStartingParam) {
+        ModernXposed.classLoader = param.classLoader
+        if (XConfig.getBoolean("MainSwitch") && XConfig.getBoolean("RemoveSmallWindowRestriction")) {
+            runCatching { RemoveSmallWindowRestriction1.init() }
+                .onFailure { log(Log.ERROR, "Fuck_Home", "System server hook failed", it) }
+        }
     }
-
+    private fun installHomeHooks() {
+        val hooks = listOf<Pair<String, BaseHook>>(
+            "Pad" to UnlockPad, "Shortcuts" to ShortcutItemCount,
+            "UnlockGrids" to UnlockGrids, "HideAppName" to HideAppName,
+            "HideAppIcon" to HideAppIcon, "UnlockHotseat" to UnlockHotseatIcon,
+            "ShortcutSmallWindow" to ShortcutSmallWindow, "HideSmallWindow" to HideSmallWindow,
+            "RemoveSmallWindowRestriction" to RemoveSmallWindowRestriction2,
+            "UnlockNavType" to UnlockNavType
+        )
+        for ((key, hook) in hooks) if (XConfig.getBoolean(key)) {
+            runCatching { hook.init() }.onFailure { log(Log.ERROR, "Fuck_Home", "Hook failed: $key", it) }
+        }
+        for (hook in listOf(Info, HideStatusBarWhenEnterResents)) {
+            runCatching { hook.init() }.onFailure { log(Log.ERROR, "Fuck_Home", "Information hook failed", it) }
+        }
+    }
 }
