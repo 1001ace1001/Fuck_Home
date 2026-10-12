@@ -24,7 +24,7 @@ package cn.fuckhome.xiaowine.utils
 
 import android.util.Log
 import cn.fuckhome.xiaowine.utils.Utils.XConfig
-import de.robv.android.xposed.XposedBridge
+
 
 object LogUtils {
     private const val maxLength = 4000
@@ -39,19 +39,20 @@ object LogUtils {
             for (i in 0..chunkCount) {
                 val max = 4000 * (i + 1)
                 if (max >= content.length) {
-                    if (toXposed) XposedBridge.log("$TAG: " + content.substring(maxLength * i))
+                    if (toXposed) frameworkLog("$TAG: " + content.substring(maxLength * i))
                     if (toLogd) Log.d(TAG, content.substring(maxLength * i))
                 } else {
-                    if (toXposed) XposedBridge.log("$TAG: " + content.substring(maxLength * i, max))
+                    if (toXposed) frameworkLog("$TAG: " + content.substring(maxLength * i, max))
                     if (toLogd) Log.d(TAG, content.substring(maxLength * i, max))
                 }
             }
         } else {
-            if (toXposed) XposedBridge.log("$TAG: $content")
+            if (toXposed) frameworkLog("$TAG: $content")
             if (toLogd) Log.d(TAG, content)
         }
     }
 
+    private fun frameworkLog(message: String) { ModernXposed.module.log(Log.INFO, TAG, message) }
     fun i(obj: Any?) {
         log(obj, toXposed = true)
     }

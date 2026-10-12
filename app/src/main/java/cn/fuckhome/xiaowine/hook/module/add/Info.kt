@@ -31,9 +31,9 @@ import cn.fuckhome.xiaowine.utils.Utils
 import cn.fuckhome.xiaowine.utils.Utils.XConfig
 import cn.fuckhome.xiaowine.utils.Utils.formatSize
 import cn.fuckhome.xiaowine.utils.Utils.isNull
-import com.github.kyuubiran.ezxhelper.init.InitFields.appContext
-import com.github.kyuubiran.ezxhelper.init.InitFields.moduleRes
-import com.github.kyuubiran.ezxhelper.utils.*
+import cn.fuckhome.xiaowine.utils.ModernXposed.appContext
+import cn.fuckhome.xiaowine.utils.ModernXposed.moduleRes
+import cn.fuckhome.xiaowine.utils.*
 import java.io.File
 import java.util.*
 import kotlin.math.roundToInt
