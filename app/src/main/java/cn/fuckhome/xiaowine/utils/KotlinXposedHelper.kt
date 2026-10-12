@@ -47,17 +47,17 @@ fun Iterable<Executable>.hookBefore(h: Hooker) = map { it.hookBefore(h) }
 fun Iterable<Executable>.hookAfter(h: Hooker) = map { it.hookAfter(h) }
 fun String.findClass(loader: ClassLoader = ModernXposed.classLoader): Class<*> = Class.forName(this,false,loader)
 private fun Class<*>.hierarchy(): Sequence<Class<*>> = generateSequence(this) { it.superclass }
-fun findMethod(name: String, p: Method.()->Boolean): Method = name.findClass().hierarchy().flatMap { it.declaredMethods.asSequence() }.first { it.p() }.apply { isAccessible=true }
-fun findAllMethods(name: String, p: Method.()->Boolean): List<Method> = name.findClass().declaredMethods.filter { it.p() }.onEach { isAccessible=true }
-fun findConstructor(name: String, p: Constructor<*>.()->Boolean): Constructor<*> = name.findClass().declaredConstructors.first { it.p() }.apply { isAccessible=true }
+fun findMethod(name: String, p: Method.()->Boolean): Method = name.findClass().hierarchy().flatMap { it.declaredMethods.asSequence() }.first { it.p() }.apply { setAccessible(true) }
+fun findAllMethods(name: String, p: Method.()->Boolean): List<Method> = name.findClass().declaredMethods.filter { it.p() }.onEach { setAccessible(true) }
+fun findConstructor(name: String, p: Constructor<*>.()->Boolean): Constructor<*> = name.findClass().declaredConstructors.first { it.p() }.apply { setAccessible(true) }
 private fun types(args: Array<out Any?>): Array<Class<*>> = args.map { if(it is Class<*>) it else (it as String).findClass() }.toTypedArray()
-private fun Class<*>.exact(name: String?, args: Array<out Any?>): Method = hierarchy().mapNotNull { runCatching { it.getDeclaredMethod(requireNotNull(name),*types(args)) }.getOrNull() }.first().apply { isAccessible=true }
+private fun Class<*>.exact(name: String?, args: Array<out Any?>): Method = hierarchy().mapNotNull { runCatching { it.getDeclaredMethod(requireNotNull(name),*types(args)) }.getOrNull() }.first().apply { setAccessible(true) }
 fun Class<*>.hookBeforeMethod(name: String?, vararg args: Any?, hooker: Hooker) = exact(name,args).hookBefore(hooker)
 fun Class<*>.hookAfterMethod(name: String?, vararg args: Any?, hooker: Hooker) = exact(name,args).hookAfter(hooker)
 fun Class<*>.replaceMethod(name: String?, vararg args: Any?, replacer: (MethodHookParam)->Any?) = exact(name,args).replaceMethod(replacer)
 fun Class<*>.hookBeforeAllMethods(name: String?, h: Hooker) = declaredMethods.filter { it.name==name }.map { it.hookBefore(h) }
 fun Class<*>.hookAfterAllMethods(name: String?, h: Hooker) = declaredMethods.filter { it.name==name }.map { it.hookAfter(h) }
-fun Class<*>.findField(name: String?): Field = hierarchy().mapNotNull { runCatching { it.getDeclaredField(requireNotNull(name)) }.getOrNull() }.first().apply { isAccessible=true }
+fun Class<*>.findField(name: String?): Field = hierarchy().mapNotNull { runCatching { it.getDeclaredField(requireNotNull(name)) }.getOrNull() }.first().apply { setAccessible(true) }
 fun Any?.getObjectField(name: String?): Any? = requireNotNull(this).javaClass.findField(name).get(this)
 fun <T> Any?.getObjectAs(name: String): T = getObjectField(name) as T
 fun <T> T.setObjectField(name: String?, value: Any?): T = apply { requireNotNull(this).javaClass.findField(name).set(this,value) }
@@ -82,7 +82,7 @@ private fun <T: Executable> select(candidates: List<T>, args: Array<out Any?>): 
     val matches = candidates.filter { e -> e.parameterCount==args.size && e.parameterTypes.indices.all { i -> val a=args[i]; val t=e.parameterTypes[i]; if(a==null) !t.isPrimitive else t.boxed().isAssignableFrom(a.javaClass) } }.distinctBy { it.parameterTypes.toList() }
     val best=matches.filter { a -> matches.none { b -> b!==a && a.parameterTypes.indices.all { i -> a.parameterTypes[i].boxed().isAssignableFrom(b.parameterTypes[i].boxed()) } && a.parameterTypes.indices.any { i -> a.parameterTypes[i].boxed()!=b.parameterTypes[i].boxed() } } }
     require(best.size==1) { "No unique matching executable: $candidates" }
-    return best.single().apply { isAccessible=true }
+    return best.single().apply { setAccessible(true) }
 }
 private fun Method.invokeUnwrapped(receiver: Any?, args: Array<out Any?>): Any? = try { invoke(receiver,*args) } catch(e: InvocationTargetException) { throw e.targetException }
 fun Any?.callMethod(name: String?, vararg args: Any?): Any? { val r=requireNotNull(this); return select(r.javaClass.hierarchy().flatMap { it.declaredMethods.asSequence() }.filter { it.name==name && !Modifier.isStatic(it.modifiers) }.toList(),args).invokeUnwrapped(r,args) }
