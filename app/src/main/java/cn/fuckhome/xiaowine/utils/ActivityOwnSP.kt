@@ -1,4 +1,4 @@
-package cn.fuckhome.xiaowine.utils/*
+/*
  * StatusBarLyric
  * Copyright (C) 2021-2022 fkj@fkj233.cn
  * https://github.com/577fkj/StatusBarLyric
@@ -11,37 +11,34 @@ package cn.fuckhome.xiaowine.utils/*
  *
  * This software is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * and eula along with this software.  If not, see
+ * and eula along with this software. If not, see
  * <https://www.gnu.org/licenses/>
  * <https://github.com/577fkj/StatusBarLyric/blob/main/LICENSE>.
  */
+package cn.fuckhome.xiaowine.utils
 
-
+import android.content.Context
+import android.content.SharedPreferences
 import cn.fuckhome.xiaowine.config.Config
-import android.annotation.SuppressLint
-import android.app.Activity
 
-@SuppressLint("StaticFieldLeak")
 object ActivityOwnSP {
-    lateinit var activity: Activity
-    val ownSP by lazy { Utils.getSP(activity, "Fuck_Home_Config")!! }
+    lateinit var ownSP: SharedPreferences
+        private set
     val ownSPConfig by lazy { Config(ownSP) }
-    private val ownEditor by lazy { ownSP.edit() }
-
     const val version = 2
-
+    @Synchronized
+    fun initialize(context: Context) {
+        if (!::ownSP.isInitialized) ownSP = Utils.getSP(context, Utils.CONFIG_GROUP)
+        ConfigSharing.start(ownSP)
+    }
     fun set(key: String, any: Any) {
-        when (any) {
-            is Int -> ownEditor.putInt(key, any)
-            is Float -> ownEditor.putFloat(key, any)
-            is String -> ownEditor.putString(key, any)
-            is Boolean -> ownEditor.putBoolean(key, any)
-            is Long -> ownEditor.putLong(key, any)
-        }
-        ownEditor.apply()
+        val editor = ownSP.edit()
+        ConfigUtils.putValue(editor, key, any)
+        editor.apply()
+        ConfigSharing.sync()
     }
 }

@@ -19,13 +19,13 @@ import cn.fuckhome.xiaowine.R
 import cn.fuckhome.xiaowine.utils.ActivityOwnSP.ownSPConfig as config
 import cn.fuckhome.xiaowine.utils.ActivityOwnSP
 import cn.fuckhome.xiaowine.utils.BackupUtils
+import cn.fuckhome.xiaowine.utils.ConfigSharing
 import cn.fuckhome.xiaowine.utils.FileUtils
 import cn.fuckhome.xiaowine.utils.Utils
 import cn.fuckhome.xiaowine.utils.Utils.isNotNull
 import com.jaredrummler.ktsh.Shell
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.system.exitProcess
 
 class SettingsActivity : MIUIActivity() {
     private val activity = this
@@ -354,8 +354,8 @@ class SettingsActivity : MIUIActivity() {
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
-        ActivityOwnSP.activity = this
-        if (!checkLSPosed()) isLoad = false
+        ActivityOwnSP.initialize(applicationContext)
+        setSP(ActivityOwnSP.ownSP)
         super.onCreate(savedInstanceState)
         if (isLoad) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -372,25 +372,9 @@ class SettingsActivity : MIUIActivity() {
         }
     }
 
-    private fun checkLSPosed(): Boolean {
-        return try {
-            Utils.getSP(this, "Fuck_Home_Config")?.let { setSP(it) }
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            MIUIDialog(activity) {
-                setTitle(R.string.Tips)
-                setMessage(R.string.NotSupport)
-                setRButton(R.string.Restart) {
-                    val intent = packageManager.getLaunchIntentForPackage(packageName)
-                    intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    startActivity(intent)
-                    exitProcess(0)
-                }
-                setCancelable(false)
-            }.show()
-            false
-        }
+    override fun onResume() {
+        super.onResume()
+        ConfigSharing.sync()
     }
 
     inner class AppReceiver : BroadcastReceiver() {
