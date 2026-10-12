@@ -37,7 +37,6 @@ import cn.fuckhome.xiaowine.utils.*
 import java.io.File
 import java.util.*
 import kotlin.math.roundToInt
-import kotlin.system.exitProcess
 
 
 @SuppressLint("StaticFieldLeak")
@@ -103,15 +102,8 @@ object Info : BaseHook() {
                 val mTxtMemoryInfo1 = it.thisObject.getObjectAs<TextView>("mTxtMemoryInfo1")
                 textColors = mTxtMemoryInfo1.textColors
 
-                if (TextViewMaps.size != 0) {
-                    try {
-                        TextViewMaps.forEach { its ->
-                            TextViewMaps.remove(its.key)
-                        }
-                    } catch (_: ConcurrentModificationException) {
-                        exitProcess(0)
-                    }
-                }
+                TextViewMaps.clear()
+                mLinearLayout.removeAllViews()
                 TextViewMaps.apply {
                     TextViewList.forEach { name ->
                         val view = TextView(appContext).apply {
